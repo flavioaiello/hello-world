@@ -1,0 +1,82 @@
+version: "1.0"
+stages:
+  - "clone"
+  - "build"
+  - "metadata"
+  - "gitops"
+
+steps:
+  snyk-cli-action:
+    title: sast
+    description: check statics application security
+    type: github-action-executor
+    arguments:
+      url: 'https://github.com/marketplace/actions/snyk-cli-action'
+      envs: 
+      - SNYK_TOKEN: '${{SNYK_TOKEN}}'
+      registry: default
+      registry_repo: simple-demo-app
+  clone:
+    title: "Cloning repository"
+    type: "git-clone"
+    repo: "flavioaiello/simple-demo-app"
+    revision: '${{CF_REVISION}}'
+    stage: "clone"
+
+  build:
+    title: "Building Docker image"
+    type: "build"
+    image_name: "flavioaiello/simple-demo-app"
+    working_directory: "${{clone}}"
+    tags:
+    - "latest"
+    - '${{CF_SHORT_REVISION}}'
+    dockerfile: "Dockerfile"
+    stage: "build"
+    registry: default  
+  enrich-image:
+    title: Add PR info
+    type: image-enricher
+    stage: "metadata"
+    arguments:
+      IMAGE:  docker.io/flavioaiello/simple-demo-app:latest
+      BRANCH: '${{CF_BRANCH}}'
+      REPO: 'flavioaiello/simple-demo-app'
+      GIT_PROVIDER_NAME: github
+  clone_gitops:
+    title: cloning gitops repo
+    type: git-clone
+    arguments:
+      repo: 'flavioaiello/gitops-demo'
+      revision: 'main'
+    stage: "gitops"
+    when:
+      branch:
+        only:
+          - main    
+  change_manifest:
+    title: "Update k8s manifest"
+    image: "mikefarah/yq" # The image in which command will be executed
+    commands:
+      - yq -i eval ".spec.template.spec.containers[0].image = \"docker.io/flavioaiello/simple-demo-app:${CF_SHORT_REVISION}\"" simple-deploy/deployment.yaml
+      - cat simple-deploy/deployment.yaml
+    working_directory: "${{clone_gitops}}" 
+    stage: "gitops"
+    when:
+      branch:
+        only:
+          - main 
+  commit_and_push:
+    title: Commit manifest
+    type: git-commit
+    stage: "gitops"
+    arguments:
+      repo: 'flavioaiello/gitops-demo'
+      git: github
+      working_directory: '/codefresh/volume/gitops-demo/simple-deploy'
+      commit_message: Updated manifest
+      git_user_name: flavioaiello
+    when:
+      branch:
+        only:
+          - main      
