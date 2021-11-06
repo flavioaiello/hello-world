@@ -1,13 +1,13 @@
-FROM golang:1.15.1-alpine3.12 AS build
+FROM golang:1.17-alpine AS build
 
-WORKDIR /tmp/simple-demo-app
+WORKDIR /tmp/hello-world
 
 COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux go build 
 
 FROM scratch
-COPY --from=build /tmp/simple-demo-app/simple-demo-app /app/simple-demo-app
+COPY --from=build /tmp/hello-world/hello-world /app/hello-world
 
 EXPOSE 8080
-CMD ["/app/simple-demo-app"]
+CMD ["/app/hello-world"]
