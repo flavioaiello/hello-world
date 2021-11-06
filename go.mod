@@ -1,3 +1,2 @@
-module github.com/flavioaiello/simple-demo-app
-
-go 1.13
+module github.com/flavioaiello/hello-world
+go 1.17
