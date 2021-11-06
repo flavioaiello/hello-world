@@ -1,1 +1,1 @@
-# Simple demo app
+# Hello world
