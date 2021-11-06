@@ -15,18 +15,18 @@ steps:
       envs: 
       - SNYK_TOKEN: '${{SNYK_TOKEN}}'
       registry: default
-      registry_repo: simple-demo-app
+      registry_repo: hello-world
   clone:
     title: "Cloning repository"
     type: "git-clone"
-    repo: "flavioaiello/simple-demo-app"
+    repo: "flavioaiello/hello-world"
     revision: '${{CF_REVISION}}'
     stage: "clone"
 
   build:
     title: "Building Docker image"
     type: "build"
-    image_name: "flavioaiello/simple-demo-app"
+    image_name: "flavioaiello/hello-world"
     working_directory: "${{clone}}"
     tags:
     - "latest"
@@ -39,9 +39,9 @@ steps:
     type: image-enricher
     stage: "metadata"
     arguments:
-      IMAGE:  docker.io/flavioaiello/simple-demo-app:latest
+      IMAGE:  docker.io/flavioaiello/hello-world:latest
       BRANCH: '${{CF_BRANCH}}'
-      REPO: 'flavioaiello/simple-demo-app'
+      REPO: 'flavioaiello/hello-world'
       GIT_PROVIDER_NAME: github
   clone_gitops:
     title: cloning gitops repo
@@ -58,8 +58,8 @@ steps:
     title: "Update k8s manifest"
     image: "mikefarah/yq" # The image in which command will be executed
     commands:
-      - yq -i eval ".spec.template.spec.containers[0].image = \"docker.io/flavioaiello/simple-demo-app:${CF_SHORT_REVISION}\"" simple-deploy/deployment.yaml
-      - cat simple-deploy/deployment.yaml
+      - yq -i eval ".spec.template.spec.containers[0].image = \"docker.io/flavioaiello/hello-world:${CF_SHORT_REVISION}\"" hello-world/deployment.yaml
+      - cat hello-world/deployment.yaml
     working_directory: "${{clone_gitops}}" 
     stage: "gitops"
     when:
@@ -73,7 +73,7 @@ steps:
     arguments:
       repo: 'flavioaiello/gitops-demo'
       git: github
-      working_directory: '/codefresh/volume/gitops-demo/simple-deploy'
+      working_directory: '/codefresh/volume/gitops-demo/hello-world'
       commit_message: Updated manifest
       git_user_name: flavioaiello
     when:
