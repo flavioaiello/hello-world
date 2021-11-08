@@ -1,0 +1,64 @@
+version: "1.0"
+stages:
+  - prepare
+  - build
+  - deploy 
+  - finish   
+steps:
+  clone:
+    type: "git-clone"
+    stage: prepare
+    description: "Cloning main repository..."
+    repo: '${{CF_REPO_OWNER}}/${{CF_REPO_NAME}}'
+    revision: "${{CF_BRANCH}}"
+  build_app_image:
+    title: Building Docker Image
+    type: build
+    stage: build
+    image_name: flavioaiello/blue-green-sample-app
+    working_directory: "${{clone}}" 
+    tags:
+    - "latest"
+    - '${{CF_SHORT_REVISION}}'
+    dockerfile: Dockerfile
+  start_deployment:
+    title: Deploying new color
+    stage: deploy
+    image: codefresh/cf-deploy-kubernetes:master
+    working_directory: "${{clone}}"
+    commands:
+      - /cf-deploy-kubernetes ./blue-green-manual-approval/service.yaml 
+      - /cf-deploy-kubernetes ./blue-green-manual-approval/service-preview.yaml   
+      - /cf-deploy-kubernetes ./blue-green-manual-approval/rollout.yaml   
+    environment:
+      - KUBERNETES_NAMESPACE=blue-green 
+  run_integration_tests:
+    title: Smoke tests
+    stage: deploy
+    image: maven:3.5.2-jdk-8-alpine
+    working_directory: "${{clone}}" 
+    fail_fast: false
+    commands:
+     - mvn -Dmaven.repo.local=/codefresh/volume/m2_repository verify -Dserver.host=http://13.86.102.74  -Dserver.port=80
+  promote_color:
+    title: Switching traffic to new color
+    stage: finish
+    image: kostiscodefresh/kubectl-argo-rollouts:latest
+    commands:
+      - /app/kubectl-argo-rollouts-linux-amd64 promote spring-sample-app-deployment -n blue-green --context "mydemoAkscluster@BizSpark Plus"
+    when:
+      steps:
+      - name: run_integration_tests
+        on:
+        - success 
+  abort_deployment:
+    title: Keeping the existing color
+    stage: finish
+    image: kostiscodefresh/kubectl-argo-rollouts:latest
+    commands:
+      - /app/kubectl-argo-rollouts-linux-amd64 undo spring-sample-app-deployment -n blue-green --context "mydemoAkscluster@BizSpark Plus" 
+    when:
+      steps:
+      - name: run_integration_tests
+        on:
+        - failure         
