@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: simple-demo-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: simple-demo-app
+  template:
+    metadata:
+      labels:
+        app: simple-demo-app
+    spec:
+      containers:
+        - name: simple-demo-app
+          image: docker.io/flavioaiello/simple-demo-app:791ff84
+          ports:
+            - containerPort: 8080
