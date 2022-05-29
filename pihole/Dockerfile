@@ -1,4 +1,4 @@
-FROM debian:buster-slim
+FROM debian:10.12-slim
 
 ARG TARGETPLATFORM
 ARG S6_VERSION=v1.22.1.0
